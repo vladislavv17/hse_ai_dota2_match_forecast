@@ -1,6 +1,7 @@
 import requests as req
 import json
 import time
+import os
 
 def get_last_matches(account_id):
     url = f'https://api.opendota.com/api/players/{account_id}/matches?api_key=SECRET'
@@ -87,12 +88,18 @@ if __name__ == "__main__":
     
     parsed_ids = set()
     
-    backup_count = 25
+    #backup_count = 38
     
-    for i in range(backup_count):
-        with open(f'backup_{i + 1}.json', 'r', encoding='cp850') as file:
+    n_to_save = 1
+    
+    while(os.path.exists(f'backup_{n_to_save}.json')):
+        with open(f'backup_{n_to_save}.json', 'r', encoding='cp850') as file:
+            print(f'\rRead {n_to_save} backup', end='')
             parsed_matches = json.load(file)
+            n_to_save += 1
             parsed_ids |= set([i for i in parsed_matches])
+    print() 
+    
     with open('already_parsed_matches.json', 'r', encoding='cp850') as file:
         parsed_matches = json.load(file)
     
@@ -110,9 +117,11 @@ if __name__ == "__main__":
     
     
     
-    save_count = 150
-    last_checkpoint = 90
-    already_parsed = 6
+    save_count = 50
+    last_checkpoint = 0
+    already_parsed = 70
+    count_for_save = 670
+    
     
     player_count = already_parsed
     for player in players[already_parsed:]:
@@ -127,11 +136,13 @@ if __name__ == "__main__":
             match_count += 1
             match_id = str(match['match_id'])
             print(f'\rParsing match {match_count}/{len(player_matches)} with id {match["match_id"]}', end='')
+            
             if match_count % save_count == 0 and match_count > last_checkpoint:
                 with open('already_parsed_matches.json', 'w', encoding='utf-8') as w:
                     json.dump(parsed_matches, w, ensure_ascii=False, indent=4)
                 with open('bad_matches.json', 'w', encoding='utf-8') as w:
                     json.dump(bad_matches, w, ensure_ascii=False, indent=4)
+            
             if  match_id not in parsed_matches and match_id not in bad_matches and match_id not in parsed_ids:
                 time.sleep(0.2)
                 match_info = get_match_info(match['match_id'])
@@ -139,3 +150,15 @@ if __name__ == "__main__":
                     bad_matches.append(match['match_id'])
                     
                 parsed_matches[match['match_id']] = match_info
+            
+            if len(parsed_matches) >= count_for_save:
+                with open(f'backup_{n_to_save}.json', 'w', encoding='utf-8') as w:
+                    json.dump(parsed_matches, w, ensure_ascii=False, indent=4)
+                    parsed_ids |= set([i for i in parsed_matches])
+                    print(f'Save backup {n_to_save}')
+                    n_to_save += 1
+                    parsed_matches = dict()
+                with open('already_parsed_matches.json', 'w', encoding='utf-8') as w:
+                    json.dump(parsed_matches, w, ensure_ascii=False, indent=4)            
+                
+        last_checkpoint = 0
