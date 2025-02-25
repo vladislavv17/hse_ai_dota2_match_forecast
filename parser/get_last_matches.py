@@ -4,7 +4,7 @@ import time
 import os
 
 def get_last_matches(account_id):
-    url = f'https://api.opendota.com/api/players/{account_id}/matches?api_key=SECRET'
+    url = f'https://api.opendota.com/api/players/{account_id}/matches?api_key=38b38644-892a-4eb4-a2b1-06bedea541c3'
     #print(response.text)
     data = -1
     while data == -1:
@@ -23,7 +23,7 @@ def get_last_matches(account_id):
     return data
     
 def get_match_info(match_id):
-    url = f'https://api.opendota.com/api/matches/{match_id}?api_key=SECRET'
+    url = f'https://api.opendota.com/api/matches/{match_id}?api_key=38b38644-892a-4eb4-a2b1-06bedea541c3'
     white_list_of_match_fields = ['match_id', 'barracks_status_dire', 'barracks_status_radiant', 'cluster', 'dire_score', 'draft_timings', 'duration', 'engine',
                             'first_blood_time', 'game_mode', 'human_players', 'leagueid', 'lobby_type', 'match_seq_num', 'negative_votes',
                             'picks_bans', 'positive_votes', 'radiant_gold_adv', 'radiant_score', 'radiant_win', 'radiant_xp_adv', 'start_time', 'tower_status_dire',
