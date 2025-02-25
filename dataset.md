@@ -1,5 +1,7 @@
 ## Описание данных
 
+Ссылка на данные: https://github.com/vladislavv17/hse_ai_dota2_match_forecast/tree/main/data/data.md
+
 - **match_id** – уникальный идентификатор матча.
 - **barracks_status_dire** – битовая маска состояния бараков у команды Dire (разрушенные или нет). Порядок битов от меньшего к большему: верх1, верх2, мид1, мид2, низ1, низ2.
 - **barracks_status_radiant** – битовая маска состояния бараков у команды Radiant.
