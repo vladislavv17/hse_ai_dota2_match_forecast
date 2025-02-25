@@ -55,19 +55,33 @@ class Player:
         need_fields = ['assists', 'camps_stacked', 'deaths', 'gold', 'gold_per_min', 'gold_spent', 'hero_damage',
                        'hero_healing', 'hero_id', 'item_0', 'item_1', 'item_2', 'item_3', 'item_4', 'item_5',
                        'kills', 'last_hits', 'level', 'obs_placed', 'pings', 'rune_pickups', 'sen_placed',
-                       'stuns', 'tower_damage', 'xp_per_min', 'isRadiant', 'total_gold', 'total_xp', 'kills_per_min',
-                       'kills_per_min', 'kda', 'abandons', 'neutral_kills', 'tower_kills', 'courier_kills',
+                       'stuns', 'tower_damage', 'xp_per_min', 'total_gold', 'total_xp', 'kills_per_min',
+                       'kda', 'abandons', 'neutral_kills', 'tower_kills', 'courier_kills',
                        'lane_kills', 'hero_kills', 'observer_kills', 'sentry_kills', 'roshan_kills',
                        'necronomicon_kills', 'ancient_kills', 'buyback_count', 'observer_uses', 'sentry_uses',
                        'lane_efficiency', 'lane_efficiency_pct', 'lane', 'lane_role', 'purchase_tpscroll',
                        'actions_per_min', 'life_state_dead', 'rank_tier']
         return need_fields
         
+    def get_collected_fields_num(self):
+        fields = ['assists', 'camps_stacked', 'deaths', 'gold', 'gold_per_min', 'gold_spent', 'hero_damage',
+                  'hero_healing', 'kills', 'last_hits', 'level', 'obs_placed', 'pings', 'rune_pickups',
+                  'sen_placed', 'stuns', 'tower_damage', 'xp_per_min', 'total_gold', 'total_xp', 'kills_per_min',
+                  'kda', 'abandons', 'neutral_kills', 'tower_kills', 'courier_kills', 'lane_kills',
+                  'hero_kills', 'observer_kills', 'sentry_kills', 'roshan_kills', 'necronomicon_kills',
+                  'ancient_kills', 'buyback_count', 'observer_uses', 'sentry_uses', 'lane_efficiency',
+                  'lane_efficiency_pct', 'purchase_tpscroll', 'actions_per_min', 'life_state_dead', 'rank_tier']
+        
+        
+    def get_collected_fields_category(self):
+        fields = ['hero_id', 'item_0', 'item_1', 'item_2', 'item_3', 'item_4', 'item_5', 'isRadiant', 'lane',
+                  'lane_role']
+        
     def get_stats_for_time(self, current_time: int, slot: int):
         valid_keys = [t for t in self.history_data.keys() if t < current_time]
         
         # 2) Отсортируем, чтобы понять последние n по времени/индексу
-        valid_keys.sort()
+        valid_keys.sort()git 
         
         # 3) Возьмём срез последних n ключей
         relevant_keys = valid_keys[-n:]
