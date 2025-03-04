@@ -13,17 +13,14 @@ jobs:
           fetch-depth: 0
 
       - name: Identify changed files
+        id: changed-files
         run: |
-          CHANGED_FILES=$(git diff --name-only "${{ github.event.pull_request.base.sha }}" "${{ github.event.pull_request.head.sha }}")
-          echo "modified_files<<EOF" >> $GITHUB_OUTPUT
-          echo "$CHANGED" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
-          echo "All changed files"
-          echo "$GITHUB_OUTPUT"
+          echo "changed_files=$(git diff --name-only -r HEAD^1 HEAD | xargs)" >> $GITHUB_OUTPUT
+
 
       - name: Lint Dockerfiles
         run: |
-          for file in ${{ steps.changed_files.outputs.modified_files }}; do
+          for file in ${{ steps.changed-files.outputs.changed_files }}; do
             if [[ -f "$file" && "$(basename "$file")" == "Dockerfile" ]]; then
               echo "Linting $file"
               cat "$file" | docker run --rm -i hadolint/hadolint
@@ -32,7 +29,7 @@ jobs:
 
       - name: Lint Shell scripts
         run: |
-          for file in ${{ steps.changed_files.outputs.modified_files }}; do
+          for file in ${{ steps.changed-files.outputs.changed_files }}; do
             if [[ "$file" == *.sh && -f "$file" ]]; then
               echo "Linting $file"
               docker run --rm -v "${{ github.workspace }}:/mnt" koalaman/shellcheck:stable "/mnt/$file"
@@ -46,7 +43,7 @@ jobs:
       - name: Lint Python scripts
         run: |
           echo "Run pylint checks"
-          for file in ${{ steps.changed_files.outputs.modified_files }}; do
+          for file in ${{ steps.changed-files.outputs.changed_files }}; do
             if [[ "$file" == *.py && -f "$file" ]]; then
               echo "Running flake8 for $file"
               flake8 "$file" --max-line-length=120
