@@ -17,15 +17,14 @@ jobs:
         run: |
           CHANGED_FILES="$(git diff --name-only ${{ github.event.pull_request.base.sha }} ${{ github.event.pull_request.head.sha }})"
           echo "CHANGED_FILES<<EOF" >> $GITHUB_ENV
-          ALL_CHANGED_FILES=$(echo "$CHANGED_FILES" | tr -d '\r')
-          echo "$ALL_CHANGED_FILES"     >> $GITHUB_ENV
           echo "$CHANGED_FILES"     >> $GITHUB_ENV
           echo "EOF"                >> $GITHUB_ENV
 
 
       - name: Lint Dockerfiles
         run: |
-          for file in ${{ steps.changed-files.outputs.changed_files }}; do
+          CLEANED=$(echo "$CHANGED_FILES" | tr -d '\r')
+          for file in $CLEANED; do
             if [[ -f "$file" && "$(basename "$file")" == "Dockerfile" ]]; then
               echo "Linting $file"
               cat "$file" | docker run --rm -i hadolint/hadolint
@@ -34,7 +33,8 @@ jobs:
 
       - name: Lint Shell scripts
         run: |
-          for file in $ALL_CHANGED_FILES; do
+          CLEANED=$(echo "$CHANGED_FILES" | tr -d '\r')
+          for file in $CLEANED; do
             if [[ "$file" == *.sh && -f "$file" ]]; then
               echo "Linting $file"
               docker run --rm -v "${{ github.workspace }}:/mnt" koalaman/shellcheck:stable "/mnt/$file"
@@ -47,10 +47,7 @@ jobs:
 
       - name: Lint Python scripts
         run: |
-          echo "Run pylint checks"
           CLEANED=$(echo "$CHANGED_FILES" | tr -d '\r')
-          echo "$CLEANED"
-          echo "${{ steps.changed-files.outputs.changed_files }}"
           for file in $CLEANED; do
             echo "Potential Python file: $file"
             if [[ "$file" == *.py && -f "$file" ]]; then
