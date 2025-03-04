@@ -17,6 +17,8 @@ jobs:
         run: |
           CHANGED_FILES="$(git diff --name-only ${{ github.event.pull_request.base.sha }} ${{ github.event.pull_request.head.sha }})"
           echo "CHANGED_FILES<<EOF" >> $GITHUB_ENV
+          ALL_CHANGED_FILES=$(echo "$CHANGED_FILES" | tr -d '\r')
+          echo "$ALL_CHANGED_FILES"     >> $GITHUB_ENV
           echo "$CHANGED_FILES"     >> $GITHUB_ENV
           echo "EOF"                >> $GITHUB_ENV
 
@@ -32,7 +34,7 @@ jobs:
 
       - name: Lint Shell scripts
         run: |
-          for file in ${{ steps.changed-files.outputs.changed_files }}; do
+          for file in $ALL_CHANGED_FILES; do
             if [[ "$file" == *.sh && -f "$file" ]]; then
               echo "Linting $file"
               docker run --rm -v "${{ github.workspace }}:/mnt" koalaman/shellcheck:stable "/mnt/$file"
