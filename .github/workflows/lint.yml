@@ -43,6 +43,7 @@ jobs:
 
       - name: Lint Python scripts
         run: |
+          echo "Run pylint checks"
           for file in ${{ steps.changed_files.outputs.modified_files }}; do
             if [[ "$file" == *.py && -f "$file" ]]; then
               echo "Running flake8 for $file"
