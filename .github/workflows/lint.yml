@@ -46,8 +46,11 @@ jobs:
       - name: Lint Python scripts
         run: |
           echo "Run pylint checks"
+          CLEANED=$(echo "$CHANGED_FILES" | tr -d '\r')
+          eche "$CLEANED"
           echo "${{ steps.changed-files.outputs.changed_files }}"
-          for file in ${{ steps.changed-files.outputs.changed_files }}; do
+          for file in $CLEANED; do
+            echo "Potential Python file: $file"
             if [[ "$file" == *.py && -f "$file" ]]; then
               echo "Running flake8 for $file"
               flake8 "$file" --max-line-length=120
