@@ -15,7 +15,6 @@ jobs:
       - name: Identify changed files
         id: changed-files
         run: |
-          id: changed-files
           CHANGED_FILES="$(git diff --name-only ${{ github.event.pull_request.base.sha }} ${{ github.event.pull_request.head.sha }})"
           echo "CHANGED_FILES<<EOF" >> $GITHUB_ENV
           echo "$CHANGED_FILES"     >> $GITHUB_ENV
