@@ -16,8 +16,10 @@ jobs:
         id: changed-files
         run: |
           id: changed-files
-          CHANGED_FILES=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }})
-          echo "changed_files=$CHANGED_FILES" >> $GITHUB_OUTPUT
+          CHANGED_FILES="$(git diff --name-only ${{ github.event.pull_request.base.sha }} ${{ github.event.pull_request.head.sha }})"
+          echo "CHANGED_FILES<<EOF" >> $GITHUB_ENV
+          echo "$CHANGED_FILES"     >> $GITHUB_ENV
+          echo "EOF"                >> $GITHUB_ENV
 
 
       - name: Lint Dockerfiles
@@ -45,6 +47,7 @@ jobs:
       - name: Lint Python scripts
         run: |
           echo "Run pylint checks"
+          echo "${{ steps.changed-files.outputs.changed_files }}"
           for file in ${{ steps.changed-files.outputs.changed_files }}; do
             if [[ "$file" == *.py && -f "$file" ]]; then
               echo "Running flake8 for $file"
