@@ -18,6 +18,8 @@ jobs:
           echo "modified_files<<EOF" >> $GITHUB_OUTPUT
           echo "$CHANGED" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
+          echo "All changed files"
+          echo "$GITHUB_OUTPUT"
 
       - name: Lint Dockerfiles
         run: |
