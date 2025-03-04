@@ -15,7 +15,9 @@ jobs:
       - name: Identify changed files
         id: changed-files
         run: |
-          echo "changed_files=$(git diff --name-only -r HEAD^1 HEAD | xargs)" >> $GITHUB_OUTPUT
+          id: changed-files
+          CHANGED_FILES=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }})
+          echo "changed_files=$CHANGED_FILES" >> $GITHUB_OUTPUT
 
 
       - name: Lint Dockerfiles
