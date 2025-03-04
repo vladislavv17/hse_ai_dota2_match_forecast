@@ -13,10 +13,9 @@ jobs:
           fetch-depth: 0
 
       - name: Identify changed files
-        id: changed_files
         run: |
-          CHANGED=$(git diff --name-only ${{ github.event.pull_request.base.sha }} ${{ github.event.pull_request.head.sha }})
-          echo "modified_files=$CHANGED" >> $GITHUB_OUTPUT
+          CHANGED_FILES=$(git diff --name-only "${{ github.event.pull_request.base.sha }}" "${{ github.event.pull_request.head.sha }}")
+          echo "CHANGED_FILES=$CHANGED_FILES" >> $GITHUB_ENV
 
       - name: Lint Dockerfiles
         run: |
