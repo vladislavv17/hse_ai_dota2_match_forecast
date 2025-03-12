@@ -44,6 +44,7 @@ jobs:
       - name: Install Python linters
         run: |
           pip install flake8 pylint
+          pip install pandas
 
       - name: Lint Python scripts
         run: |
