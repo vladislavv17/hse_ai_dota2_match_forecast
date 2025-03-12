@@ -1,0 +1,61 @@
+name: Deploy AWS Lambda with Docker
+
+on:
+  pull_request:
+    types: [closed]
+
+
+jobs:
+  deploy-lambdas:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1 # Замени на свой регион
+
+      - name: Determine Environment Prefix
+        id: env_prefix
+        run: |
+          if [[ "${{ github.base_ref }}" == "main" ]]; then
+            echo "PREFIX=prd" >> $GITHUB_ENV
+          else
+            echo "PREFIX=dev" >> $GITHUB_ENV
+          fi
+
+      - name: Deploy Each Lambda
+        run: |
+          for dir in lambdas/*/ ; do
+            LAMBDA_NAME=$(basename "$dir")
+            FULL_NAME="${PREFIX}-${LAMBDA_NAME}"
+            ECR_REPO="438717593033.dkr.ecr.us-east-1.amazonaws.com/${FULL_NAME}"
+
+            echo "Processing Lambda: ${FULL_NAME}"
+
+            # Логинимся в ECR
+            aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin $ECR_REPO
+
+            # Создаем репозиторий в ECR, если его нет
+            aws ecr describe-repositories --repository-names ${FULL_NAME} || \
+              aws ecr create-repository --repository-name ${FULL_NAME}
+
+            # Собираем Docker-образ и пушим в ECR
+            docker build -t ${ECR_REPO}:latest $dir
+            docker push ${ECR_REPO}:latest
+
+            # Деплоим в AWS Lambda
+            aws lambda create-function --function-name ${FULL_NAME} \
+              --package-type Image \
+              --code ImageUri=${ECR_REPO}:latest \
+              --role arn:aws:iam::438717593033:role/lambda-execution-role \
+              --region us-east-1 || \
+            aws lambda update-function-code --function-name ${FULL_NAME} --image-uri ${ECR_REPO}:latest
+
+            echo "Lambda ${FULL_NAME} deployed!"
+          done
