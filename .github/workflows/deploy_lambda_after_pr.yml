@@ -32,7 +32,7 @@ jobs:
       - name: Deploy Each Lambda
         run: |
           for dir in lambdas/*/ ; do
-            LAMBDA_NAME=$(basename "$dir")
+            LAMBDA_NAME=$(basename "$dir" | tr '[:upper:]' '[:lower:]')
             FULL_NAME="${PREFIX}-${LAMBDA_NAME}"
             ECR_REPO="438717593033.dkr.ecr.us-east-1.amazonaws.com/${FULL_NAME}"
 
