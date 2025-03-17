@@ -23,6 +23,10 @@ def lambda_handler(event, _context):
     """
     try:  # pylint: disable=broad-exception-caught
         # Извлечение входных данных
+        if 'body' in event:
+            event = json.loads(event['body'])
+        
+        # Извлечение входных данных
         pickle_file_b64 = event.get('pickle_file')
         csv_data_b64 = event.get('csv_data')
         params = event.get('params', {})
