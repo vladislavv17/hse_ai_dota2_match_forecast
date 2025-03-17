@@ -67,13 +67,17 @@ def lambda_handler(event, _context):
         X = df.drop(columns=['target'])
 
         # Обучение модели с дополнительными параметрами (если они переданы)
+        print('Before try to fit')
         model.fit(X, y)
 
         # Сериализация обученной модели и сохранение в S3
+        print('fitted')
         fitted_model_pickle = pickle.dumps(model)
+        print('puckled model')
         fitted_model_b64 = base64.b64encode(fitted_model_pickle).decode('utf-8')
+        print('encode fitted model')
         s3_client.put_object(Bucket=s3_bucket, Key=s3_key, Body=fitted_model_pickle)
-
+        print('Okay object saved')
         return {
             'statusCode': 200,
             'body': json.dumps({
