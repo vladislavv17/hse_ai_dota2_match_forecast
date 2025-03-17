@@ -21,7 +21,6 @@ def lambda_handler(event, _context):
           - "s3_bucket": имя S3 bucket,
           - "s3_key": путь (ключ) для сохранения модели в bucket.
     """
-    print('solo comment for update pr')
     try:  # pylint: disable=broad-exception-caught
         # Извлечение входных данных
         pickle_file_b64 = event.get('pickle_file')
