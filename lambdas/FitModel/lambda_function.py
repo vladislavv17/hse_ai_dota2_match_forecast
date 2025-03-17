@@ -68,10 +68,6 @@ def lambda_handler(event, _context):
 
         # Обучение модели с дополнительными параметрами (если они переданы)
         print('Before try to fit')
-        return {
-            'statucCode': 200,
-            'body': json.dumps({'status': 'okay, start to fit'})
-        }
         model.fit(X, y)
 
         # Сериализация обученной модели и сохранение в S3
