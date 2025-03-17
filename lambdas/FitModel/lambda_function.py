@@ -70,7 +70,7 @@ def lambda_handler(event, _context):
         print('Before try to fit')
         return {
             'statucCode': 200,
-            body: json.dumps({'status': 'okay, start to fit'})
+            'body': json.dumps({'status': 'okay, start to fit'})
         }
         model.fit(X, y)
 
