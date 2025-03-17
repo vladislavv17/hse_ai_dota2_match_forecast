@@ -67,7 +67,7 @@ def lambda_handler(event, _context):
         X = df.drop(columns=['target'])
 
         # Обучение модели с дополнительными параметрами (если они переданы)
-        model.fit(X, y, **params)
+        model.fit(X, y)
 
         # Сериализация обученной модели и сохранение в S3
         fitted_model_pickle = pickle.dumps(model)
