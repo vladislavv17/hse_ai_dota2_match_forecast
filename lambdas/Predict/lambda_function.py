@@ -101,7 +101,7 @@ def lambda_handler(event, _context):
 
     # Выполнение предсказания
     try:
-        predictions = model.predict(data)
+        predictions = model['pipeline'].predict(data)
         if hasattr(predictions, "tolist"):
             predictions = predictions.tolist()
     except Exception as e:  # pylint: disable=broad-exception-caught
