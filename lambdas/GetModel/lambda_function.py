@@ -16,12 +16,16 @@ def lambda_handler(_event, _context):
     in folder 'models'
     """
     # Получаем список объектов по префиксу
+    print('start execution')
     response = s3.list_objects_v2(Bucket=BUCKET_NAME, Prefix=PREFIX)
+    print('get response')
+    print(response)
     files_data = []
 
     if 'Contents' in response:
         for obj in response['Contents']:
             key = obj['Key']
+            print(f'get key {key}')
             # Обрабатываем только файлы с расширением .pkl
             if key.endswith('.pkl'):
                 s3_object = s3.get_object(Bucket=BUCKET_NAME, Key=key)
