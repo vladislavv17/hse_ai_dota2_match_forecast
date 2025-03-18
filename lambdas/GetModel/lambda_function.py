@@ -1,6 +1,7 @@
-import boto3
 import base64
 import json
+
+import boto3
 
 # Настройте имя бакета и префикс (папку) в S3
 BUCKET_NAME = 'dmyachin-new-models'
@@ -9,7 +10,11 @@ PREFIX = 'models'  # Например, 'pickles/'
 s3 = boto3.client('s3')
 
 
-def lambda_handler(event, context):
+def lambda_handler():
+    """
+    Return all models that collected in bucket 'dmyachin-new-models'
+    in folder 'models'
+    """
     # Получаем список объектов по префиксу
     response = s3.list_objects_v2(Bucket=BUCKET_NAME, Prefix=PREFIX)
     files_data = []
