@@ -1,5 +1,5 @@
-import base64
 import json
+import pickle
 
 import boto3
 
@@ -29,7 +29,7 @@ def lambda_handler(event, context):
                     # Формируем словарь с необходимыми полями
                     model_info = {
                         's3_key': key,
-                        'model': str(model_data.get('model')),  # преобразуем model в строку, чтобы избежать проблем с сериализацией
+                        'model': str(model_data.get('model')),
                         'params': model_data.get('params'),
                         'classification_report': model_data.get('classification_report'),
                         'learning_curve': model_data.get('learning_curve'),
