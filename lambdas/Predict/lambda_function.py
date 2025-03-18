@@ -6,7 +6,10 @@ import pandas as pd
 import boto3
 
 
-def lambda_handler(event, context):
+def lambda_handler(event, _context):
+    """
+    Lambda for make predict by given model or by setted model
+    """
     s3_bucket = "dmyachin-new-models"
     s3_client = boto3.client("s3")
 
@@ -14,7 +17,7 @@ def lambda_handler(event, context):
     if "body" in event:
         try:
             body = json.loads(event["body"])
-        except Exception as e:
+        except Exception as e:  # pylint: disable=broad-exception-caught
             return {
                 "statusCode": 400,
                 "body": json.dumps(f"Неверный формат JSON в body: {str(e)}")
@@ -38,7 +41,7 @@ def lambda_handler(event, context):
                     "statusCode": 400,
                     "body": json.dumps("Не передан model_name и не удалось получить его из DynamoDB")
                 }
-        except Exception as e:
+        except Exception as e:  # pylint: disable=broad-exception-caught
             return {
                 "statusCode": 500,
                 "body": json.dumps(f"Ошибка доступа к DynamoDB: {str(e)}")
@@ -57,7 +60,7 @@ def lambda_handler(event, context):
             "statusCode": 404,
             "body": json.dumps(f"Модель {model_name} не существует.")
         }
-    except Exception as e:
+    except Exception as e:  # pylint: disable=broad-exception-caught
         return {
             "statusCode": 500,
             "body": json.dumps(f"Ошибка при получении модели из S3: {str(e)}")
@@ -80,7 +83,7 @@ def lambda_handler(event, context):
             data_obj = s3_client.get_object(Bucket=data_bucket, Key=data_key)
             data_bytes = data_obj['Body'].read()
             data = pd.read_csv(io.BytesIO(data_bytes))
-        except Exception as e:
+        except Exception as e:  # pylint: disable=broad-exception-caught
             return {
                 "statusCode": 500,
                 "body": json.dumps(f"Ошибка при чтении файла данных из S3: {str(e)}")
@@ -88,7 +91,7 @@ def lambda_handler(event, context):
     else:
         try:
             data = pd.read_csv(data_path)
-        except Exception as e:
+        except Exception as e:  # pylint: disable=broad-exception-caught
             return {
                 "statusCode": 500,
                 "body": json.dumps(f"Ошибка при чтении локального файла данных: {str(e)}")
@@ -99,7 +102,7 @@ def lambda_handler(event, context):
         predictions = model.predict(data)
         if hasattr(predictions, "tolist"):
             predictions = predictions.tolist()
-    except Exception as e:
+    except Exception as e:  # pylint: disable=broad-exception-caught
         return {
             "statusCode": 500,
             "body": json.dumps(f"Ошибка при выполнении предсказания: {str(e)}")
