@@ -10,7 +10,10 @@ PREFIX = 'models'  # Например, 'pickles/'
 s3 = boto3.client('s3')
 
 
-def lambda_handler(event, context):
+def lambda_handler(_event, _context):
+    """
+    Lambda return models info
+    """
     # Получаем список объектов в заданном префиксе
     response = s3.list_objects_v2(Bucket=BUCKET_NAME, Prefix=PREFIX)
     models_list = []
@@ -37,7 +40,7 @@ def lambda_handler(event, context):
                     }
 
                     models_list.append(model_info)
-                except Exception as e:
+                except Exception as e: # pylint: disable=broad-exception-caught
                     # Можно добавить логирование ошибок или пропустить некорректные файлы
                     print(f"Ошибка при обработке файла {key}: {e}")
 
