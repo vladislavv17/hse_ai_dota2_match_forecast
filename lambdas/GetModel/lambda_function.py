@@ -10,35 +10,38 @@ PREFIX = 'models'  # Например, 'pickles/'
 s3 = boto3.client('s3')
 
 
-def lambda_handler(_event, _context):
-    """
-    Return all models that collected in bucket 'dmyachin-new-models'
-    in folder 'models'
-    """
-    # Получаем список объектов по префиксу
-    print('start execution')
+def lambda_handler(event, context):
+    # Получаем список объектов в заданном префиксе
     response = s3.list_objects_v2(Bucket=BUCKET_NAME, Prefix=PREFIX)
-    print('get response')
-    print(response)
-    files_data = []
+    models_list = []
 
     if 'Contents' in response:
         for obj in response['Contents']:
             key = obj['Key']
-            print(f'get key {key}')
             # Обрабатываем только файлы с расширением .pkl
             if key.endswith('.pkl'):
                 s3_object = s3.get_object(Bucket=BUCKET_NAME, Key=key)
                 file_content = s3_object['Body'].read()
-                # Кодируем бинарное содержимое файла в base64,
-                # чтобы можно было передать его в JSON
-                encoded_data = base64.b64encode(file_content).decode('utf-8')
-                files_data.append({
-                    'key': key,
-                    'data': encoded_data
-                })
+                try:
+                    # Загружаем данные из pickle файла
+                    model_data = pickle.loads(file_content)
+
+                    # Формируем словарь с необходимыми полями
+                    model_info = {
+                        's3_key': key,
+                        'model': str(model_data.get('model')),  # преобразуем model в строку, чтобы избежать проблем с сериализацией
+                        'params': model_data.get('params'),
+                        'classification_report': model_data.get('classification_report'),
+                        'learning_curve': model_data.get('learning_curve'),
+                        'experiment_id': model_data.get('experiment_id')
+                    }
+
+                    models_list.append(model_info)
+                except Exception as e:
+                    # Можно добавить логирование ошибок или пропустить некорректные файлы
+                    print(f"Ошибка при обработке файла {key}: {e}")
 
     return {
         'statusCode': 200,
-        'body': json.dumps(files_data)
+        'body': json.dumps(models_list)
     }
