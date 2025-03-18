@@ -8,6 +8,7 @@ PREFIX = 'models'  # Например, 'pickles/'
 
 s3 = boto3.client('s3')
 
+
 def lambda_handler(event, context):
     # Получаем список объектов по префиксу
     response = s3.list_objects_v2(Bucket=BUCKET_NAME, Prefix=PREFIX)
