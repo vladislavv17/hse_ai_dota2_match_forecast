@@ -40,7 +40,7 @@ def lambda_handler(_event, _context):
                     }
 
                     models_list.append(model_info)
-                except Exception as e: # pylint: disable=broad-exception-caught
+                except Exception as e:  # pylint: disable=broad-exception-caught
                     # Можно добавить логирование ошибок или пропустить некорректные файлы
                     print(f"Ошибка при обработке файла {key}: {e}")
 
