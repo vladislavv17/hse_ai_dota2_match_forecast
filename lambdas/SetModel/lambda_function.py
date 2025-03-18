@@ -12,7 +12,10 @@ TABLE_NAME = 'MyKeyValueTable'
 table = dynamodb.Table(TABLE_NAME)
 
 
-def lambda_handler(event, context):
+def lambda_handler(event, _context):
+    """
+    Lambda for set main model for predict
+    """
     # Ожидаем, что вызов происходит через API Gateway и данные передаются в теле запроса
     try:
         body = event.get('body')
@@ -49,11 +52,10 @@ def lambda_handler(event, context):
                 'statusCode': 404,
                 'body': json.dumps('Файл не найден')
             }
-        else:
-            return {
-                'statusCode': 500,
-                'body': json.dumps(f'Ошибка при проверке файла: {e}')
-            }
+        return {
+            'statusCode': 500,
+            'body': json.dumps(f'Ошибка при проверке файла: {e}')
+        }
 
     # Если файл найден, устанавливаем значение для записи в DynamoDB (например, имя файла)
     dynamodb_value = file_name
