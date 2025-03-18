@@ -1,3 +1,5 @@
+# pylint: disable=R0914, R0911, R0912
+
 import io
 import json
 import pickle
