@@ -10,7 +10,7 @@ PREFIX = 'models'  # Например, 'pickles/'
 s3 = boto3.client('s3')
 
 
-def lambda_handler():
+def lambda_handler(_event, _context):
     """
     Return all models that collected in bucket 'dmyachin-new-models'
     in folder 'models'
