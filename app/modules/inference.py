@@ -14,8 +14,8 @@ from utils.logger import logger
 # load_dotenv()
 
 def list_models_in_s3(bucket_name, prefix="models/"):
-    aws_access_key_id = os.environ.get("AWS_ACCESS_KEY_ID")
-    aws_secret_access_key = os.environ.get("AWS_SECRET_ACCESS_KEY")
+    aws_access_key_id = st.secrets["general"]["AWS_ACCESS_KEY_ID"]
+    aws_secret_access_key = st.secrets["general"]["AWS_SECRET_ACCESS_KEY"]
     if not aws_access_key_id or not aws_secret_access_key:
         st.error("AWS ключи не настроены. Пожалуйста, настройте их в Streamlit Secrets.")
         return []
@@ -39,8 +39,8 @@ def list_models_in_s3(bucket_name, prefix="models/"):
         return []
 
 def upload_data_to_s3(uploaded_file, bucket_name, key):
-    aws_access_key_id = os.environ.get("AWS_ACCESS_KEY_ID")
-    aws_secret_access_key = os.environ.get("AWS_SECRET_ACCESS_KEY")
+    aws_access_key_id = st.secrets["general"]["AWS_ACCESS_KEY_ID"]
+    aws_secret_access_key = st.secrets["general"]["AWS_SECRET_ACCESS_KEY"]
     if not aws_access_key_id or not aws_secret_access_key:
         st.error("AWS ключи не настроены. Пожалуйста, настройте их в Streamlit Secrets.")
         return None
@@ -127,7 +127,7 @@ def app():
             "data_path": data_path
         }
         api_url = "https://abkfijydkg.execute-api.us-east-1.amazonaws.com/dev/dev-predict"
-        API_KEY = os.environ.get("API_KEY")
+        API_KEY = st.secrets["general"]["API_KEY"]
         if not API_KEY:
             st.error("API_KEY не настроен. Пожалуйста, настройте его в Streamlit Secrets.")
             return
