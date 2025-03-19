@@ -1,42 +1,134 @@
+import os
 import streamlit as st
+import requests
+import base64
 import pickle
-import glob
-import plotly.express as px
+import plotly.graph_objects as go
+import boto3
+from botocore.exceptions import ClientError
 from utils.logger import logger
+
+# Для локальной разработки можно использовать dotenv
+# from dotenv import load_dotenv
+# load_dotenv()
 
 def app():
     st.title("Сравнение экспериментов")
 
-    # Получаем список файлов экспериментов из папки models
-    experiment_files = glob.glob("models/*.pkl")
-    if not experiment_files:
-        st.warning("Файлы экспериментов не найдены в папке 'models'.")
-        logger.warning("Нет файлов экспериментов в папке 'models'.")
+    # Получаем API ключ из переменных окружения
+    API_KEY = os.environ.get("API_KEY")
+    if not API_KEY:
+        st.error("API_KEY не настроен. Пожалуйста, настройте его в Streamlit Secrets.")
         return
 
-    # По умолчанию выбираем все эксперименты
-    selected_files = st.multiselect("Выберите эксперименты для сравнения", experiment_files, default=experiment_files)
-    logger.info("Пользователь выбрал эксперименты для сравнения: %s", selected_files)
-    if selected_files:
-        fig = None
-        for exp_file in selected_files:
-            with open(exp_file, "rb") as f:
-                experiment = pickle.load(f)
-            lc = experiment["learning_curve"]
-            exp_label = f"{experiment['model']} (ID {experiment['experiment_id']})"
-            # Для сравнения оставляем только кривые валидации (train curve исключаем)
-            if fig is None:
-                fig = px.line(x=lc["train_sizes"], y=lc["val_scores"],
-                              labels={"x": "Размер обучающей выборки", "y": "Score"},
-                              title="Сравнение кривых обучения (валидация)")
-                fig.add_scatter(x=lc["train_sizes"], y=lc["val_scores"], mode="lines", name=exp_label)
-            else:
-                fig.add_scatter(x=lc["train_sizes"], y=lc["val_scores"], mode="lines", name=exp_label)
-        st.plotly_chart(fig)
-        logger.info("Построена сравнительная кривая обучения (валидация) для выбранных экспериментов")
-    else:
+    url = 'https://abkfijydkg.execute-api.us-east-1.amazonaws.com/dev/dev-getmodel'
+    headers = {
+        "Content-Type": "application/json",
+        "x-api-key": API_KEY
+    }
+    
+    with st.spinner("Получаем список экспериментов..."):
+        try:
+            response = requests.get(url, json={}, headers=headers, timeout=29)
+        except Exception as e:
+            st.error(f"Ошибка запроса к API: {e}")
+            return
+
+    if response.status_code != 200:
+        st.error(f"Ошибка запроса к API: {response.status_code}, {response.text}")
+        return
+
+    experiments_list = response.json()
+    if not experiments_list:
+        st.warning("Список экспериментов пуст.")
+        return
+
+    # Строим словарь для multiselect: ключ – отображаемое имя (последняя часть s3_key), значение – объект эксперимента
+    options = {}
+    for exp in experiments_list:
+        s3_key = exp.get("s3_key")
+        display_name = s3_key.split("/")[-1] if s3_key else exp.get("key", "Unknown")
+        options[display_name] = exp
+
+    selected_experiments = st.multiselect("Выберите эксперименты для сравнения", list(options.keys()), default=list(options.keys()))
+    logger.info("Пользователь выбрал эксперименты для сравнения: %s", selected_experiments)
+
+    if not selected_experiments:
         st.info("Выберите хотя бы один эксперимент для сравнения.")
         logger.info("Пользователь не выбрал эксперименты для сравнения")
+        return
+
+    # Получаем AWS ключи из переменных окружения
+    aws_access_key_id = os.environ.get("AWS_ACCESS_KEY_ID")
+    aws_secret_access_key = os.environ.get("AWS_SECRET_ACCESS_KEY")
+    if not aws_access_key_id or not aws_secret_access_key:
+        st.error("AWS ключи не настроены. Пожалуйста, настройте их в Streamlit Secrets.")
+        return
+
+    bucket_name = "dmyachin-new-models"
+    s3_client = boto3.client(
+        "s3",
+        region_name="us-east-1",
+        aws_access_key_id=aws_access_key_id,
+        aws_secret_access_key=aws_secret_access_key
+    )
+
+    # Создаем пустую фигуру для построения графика
+    fig = go.Figure()
+
+    # Загружаем для каждого выбранного эксперимента данные и добавляем линию (валидационная кривая)
+    for display_name in selected_experiments:
+        exp_info = options[display_name]
+        s3_key = exp_info.get("s3_key")
+        if not s3_key:
+            st.warning(f"Не найден s3_key для эксперимента {display_name}")
+            continue
+
+        with st.spinner(f"Загружаем эксперимент {display_name}..."):
+            try:
+                response_s3 = s3_client.get_object(Bucket=bucket_name, Key=s3_key)
+                model_data = response_s3["Body"].read()
+                experiment = pickle.loads(model_data)
+                logger.info("Эксперимент %s успешно загружен с S3", display_name)
+            except ClientError as e:
+                st.error(f"Ошибка при загрузке эксперимента {display_name} с S3: {e}")
+                continue
+            except Exception as e:
+                st.error(f"Ошибка десериализации эксперимента {display_name}: {e}")
+                continue
+
+        # Извлекаем данные кривой обучения (используем валидационные значения)
+        lc = experiment.get("learning_curve")
+        if not lc:
+            st.warning(f"Кривая обучения отсутствует в эксперименте {display_name}")
+            continue
+
+        train_sizes = lc.get("train_sizes")
+        val_scores = lc.get("val_scores")
+        if not train_sizes or not val_scores:
+            st.warning(f"Некорректные данные кривой обучения в эксперименте {display_name}")
+            continue
+
+        exp_label = f"{experiment.get('model', 'Unknown')} (ID {experiment.get('experiment_id', 'N/A')})"
+        fig.add_trace(
+            go.Scatter(
+                x=train_sizes,
+                y=val_scores,
+                mode="lines",
+                name=exp_label
+            )
+        )
+
+    if fig.data:
+        fig.update_layout(
+            title="Сравнение кривых обучения (валидация)",
+            xaxis_title="Размер обучающей выборки",
+            yaxis_title="Score"
+        )
+        st.plotly_chart(fig)
+        logger.info("Построена сравнительная кривая обучения для выбранных экспериментов")
+    else:
+        st.info("Нет данных для отображения сравнительной кривой обучения.")
 
 if __name__ == "__main__":
     app()

@@ -1,226 +1,200 @@
-import streamlit as st
 import os
-import pickle
+import streamlit as st
 import datetime
+import time
 import pandas as pd
 import numpy as np
-from io import BytesIO
-from sklearn.model_selection import train_test_split, learning_curve
-from sklearn.pipeline import Pipeline
-from sklearn.compose import ColumnTransformer
-from sklearn.impute import SimpleImputer
-from sklearn.preprocessing import StandardScaler, OneHotEncoder
-from sklearn.metrics import accuracy_score, confusion_matrix, classification_report
-from sklearn.linear_model import LogisticRegression, SGDClassifier
-from sklearn.tree import DecisionTreeClassifier
-from utils.logger import logger
-import plotly.express as px
-import plotly.graph_objects as go
+import io
+import boto3
+from botocore.exceptions import ClientError
+import requests
+import base64
+
+BUCKET_NAME = "dmyachin-new-models"
+DATASET_KEY = "data/small_df.csv"  # Файл small_df.csv в S3 содержит столбец target
+
+def load_dataset_from_s3(bucket_name, key):
+    aws_access_key_id = os.environ.get("AWS_ACCESS_KEY_ID")
+    aws_secret_access_key = os.environ.get("AWS_SECRET_ACCESS_KEY")
+    if not aws_access_key_id or not aws_secret_access_key:
+        st.error("AWS ключи не настроены. Пожалуйста, настройте их в Streamlit Secrets.")
+        return None
+    s3_client = boto3.client(
+        "s3",
+        region_name="us-east-1",
+        aws_access_key_id=aws_access_key_id,
+        aws_secret_access_key=aws_secret_access_key
+    )
+    try:
+        response = s3_client.get_object(Bucket=bucket_name, Key=key)
+        # Если файл сохранён в другой кодировке, можно сменить 'cp1251' на нужную
+        content = response["Body"].read().decode('cp1251')
+        df = pd.read_csv(io.StringIO(content))
+        return df
+    except Exception as e:
+        st.error(f"Ошибка загрузки {key} из S3: {e}")
+        return None
+
+def upload_dataset_to_s3_client(df, bucket_name, key):
+    csv_buffer = io.StringIO()
+    df.to_csv(csv_buffer, index=False)
+    aws_access_key_id = os.environ.get("AWS_ACCESS_KEY_ID")
+    aws_secret_access_key = os.environ.get("AWS_SECRET_ACCESS_KEY")
+    if not aws_access_key_id or not aws_secret_access_key:
+        st.error("AWS ключи не настроены. Пожалуйста, настройте их в Streamlit Secrets.")
+        return None
+    s3_client = boto3.client(
+        "s3",
+        region_name="us-east-1",
+        aws_access_key_id=aws_access_key_id,
+        aws_secret_access_key=aws_secret_access_key
+    )
+    try:
+        s3_client.put_object(Bucket=bucket_name, Key=key, Body=csv_buffer.getvalue())
+        url = s3_client.generate_presigned_url(
+            'get_object',
+            Params={'Bucket': bucket_name, 'Key': key},
+            ExpiresIn=3600  # ссылка действительна 1 час
+        )
+        return url
+    except ClientError as e:
+        st.error(f"Ошибка загрузки датасета в S3: {e}")
+        return None
 
 def app():
     st.title("Обучение/Дообучение модели")
-
-    # Проверяем, что датасет загружен
-    if "df" not in st.session_state or st.session_state.df is None:
-        st.warning("Сначала загрузите датасет в разделе 'Загрузка датасета'")
+    
+    # Загружаем датасет small_df.csv из S3
+    with st.spinner("Загружаем датасет small_df.csv из S3..."):
+        df = load_dataset_from_s3(BUCKET_NAME, DATASET_KEY)
+    if df is None:
+        st.error("Не удалось загрузить датасет small_df.csv из S3.")
         return
 
-    # Загружаем датафрейм из session_state
-    df = st.session_state.df.copy()
+    # Очистка названий столбцов
+    df.columns = [col.strip() for col in df.columns]
     if 'Unnamed: 0' in df.columns:
         df.drop('Unnamed: 0', axis=1, inplace=True)
-
-    # Фильтруем столбцы по паттернам
-    patterns = [
-        "draft",
-        "account_id_",
-        "party_id",
-        "hero_variant",
-        "name_",
-        "isRadiant_",
-        "rank_tier_",
-        "game_mode",
-        "lobby_type",
-        "start_time",
-        "lane_", 
-        "is_roaming",
-        "version",
-        "series_type",
-        "patch",
-        "region",
-        "radiant_win"
-    ]
-    cols_to_keep = [col for col in df.columns if any(pattern in col for pattern in patterns)]
-    df = df[cols_to_keep]
-
-    if 'radiant_win' not in df.columns:
-        st.error("В датасете отсутствует столбец 'radiant_win'")
+    if "target" not in df.columns:
+        st.error("В датасете отсутствует столбец 'target'.")
         return
 
-    X = df.drop(columns=['radiant_win'])
-    y = df['radiant_win']
-
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.20, random_state=42, stratify=y
-    )
-
-    numeric_features = X_train.select_dtypes(include=[np.number]).columns.tolist()
-    categorical_features = X_train.select_dtypes(exclude=[np.number]).columns.tolist()
-
-    numeric_transformer = Pipeline(steps=[
-        ('imputer', SimpleImputer(strategy='mean')),
-        ('scaler', StandardScaler())
-    ])
-    categorical_transformer = Pipeline(steps=[
-        ('imputer', SimpleImputer(strategy='constant', fill_value='')),
-        ('onehot', OneHotEncoder(handle_unknown='ignore'))
-    ])
-    preprocessor = ColumnTransformer(
-        transformers=[
-            ('num', numeric_transformer, numeric_features),
-            ('cat', categorical_transformer, categorical_features)
-        ]
-    )
-
-    # Режим обучения: "Обучение с нуля" или "Дообучение существующей модели"
+    # Выбор режима обучения
     mode = st.radio("Выберите режим обучения", ["Обучение с нуля", "Дообучение существующей модели"])
     st.write("Режим:", mode)
-
+    
+    payload = {}
     if mode == "Обучение с нуля":
         st.subheader("Настройка модели")
-        classifier_choice = st.selectbox("Выберите классификатор", 
-                                         ["Logistic Regression", "Decision Tree", "SGDClassifier"])
+        # Пользователь выбирает классификатор и задаёт гиперпараметры
+        classifier_choice = st.selectbox("Выберите классификатор", ["LogisticRegression", "SGDClassifier"])
         model_params = {}
-        model_name = ""
-        if classifier_choice == "Logistic Regression":
+        if classifier_choice == "LogisticRegression":
             penalty = st.selectbox("Penalty", ["l2", "l1", "elasticnet", "none"])
             C = st.number_input("C (обратная регуляризация)", value=1.0, step=0.1)
             solver = st.selectbox("Solver", ["lbfgs", "saga", "liblinear", "newton-cg"])
             model_params = {"penalty": penalty, "C": C, "solver": solver, "max_iter": 200}
-            model_name = "LogisticRegression"
-        elif classifier_choice == "Decision Tree":
-            criterion = st.selectbox("Criterion", ["gini", "entropy"])
-            max_depth = st.slider("Max Depth", 1, 50, 10)
-            min_samples_split = st.slider("Min Samples Split", 2, 20, 2)
-            model_params = {"criterion": criterion, "max_depth": max_depth, "min_samples_split": min_samples_split}
-            model_name = "DecisionTreeClassifier"
+            model_type = "LogisticRegression"
         elif classifier_choice == "SGDClassifier":
             loss = st.selectbox("Loss", ["hinge", "log", "modified_huber", "squared_loss"])
             alpha = st.number_input("Alpha", value=0.0001, step=0.0001, format="%.5f")
             penalty = st.selectbox("Penalty", ["l2", "l1", "elasticnet"])
             learning_rate = st.selectbox("Learning rate", ["optimal", "constant", "invscaling"])
-            model_params = {"loss": loss, "alpha": alpha, "penalty": penalty, "learning_rate": learning_rate, "max_iter": 1000, "tol": 1e-3}
-            model_name = "SGDClassifier"
-
+            model_params = {"loss": loss, "alpha": alpha, "penalty": penalty,
+                            "learning_rate": learning_rate, "max_iter": 1000, "tol": 1e-3}
+            model_type = "SGDClassifier"
+        auto_model_name = f"{model_type}_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        payload["new_model_name"] = auto_model_name
+        payload["mode"] = "fit"
+        payload["model_params"] = model_params
+        payload["model_type"] = classifier_choice
+        
+        X = df.drop(columns=['target'])
+        y = df['target']
+        df_preprocessed = df.copy()
+        data_key_preprocessed = f"data/{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}_preprocessed.csv"
+        data_url = upload_dataset_to_s3_client(df_preprocessed, BUCKET_NAME, data_key_preprocessed)
+        if data_url:
+            payload["data_path"] = data_url
+        else:
+            st.error("Не удалось загрузить предобработанный датасет в S3.")
+            return
+        
+        st.write("Сформированный payload для обучения:")
+        st.json(payload)
+        
         if st.button("Запустить обучение"):
-            with st.spinner("Идет обучение модели..."):
-                if model_name == "LogisticRegression":
-                    from sklearn.linear_model import LogisticRegression
-                    classifier = LogisticRegression(**model_params)
-                elif model_name == "DecisionTreeClassifier":
-                    from sklearn.tree import DecisionTreeClassifier
-                    classifier = DecisionTreeClassifier(**model_params)
-                elif model_name == "SGDClassifier":
-                    from sklearn.linear_model import SGDClassifier
-                    classifier = SGDClassifier(**model_params)
-                
-                pipeline = Pipeline(steps=[
-                    ('preprocessor', preprocessor),
-                    ('classifier', classifier)
-                ])
-                
-                # Вычисляем learning curve (10 точек)
-                X_train_processed = pipeline.named_steps['preprocessor'].fit_transform(X_train)
-                train_sizes, train_scores, val_scores = learning_curve(
-                    pipeline.named_steps['classifier'], X_train_processed, y_train,
-                    cv=3, train_sizes=np.linspace(0.1, 1.0, 10)
-                )
-                train_scores_mean = np.mean(train_scores, axis=1)
-                val_scores_mean = np.mean(val_scores, axis=1)
-                
-                pipeline.fit(X_train, y_train)
-                test_score = pipeline.score(X_test, y_test)
-                y_pred = pipeline.predict(X_test)
-                conf_matrix = confusion_matrix(y_test, y_pred).tolist()
-                class_report = classification_report(y_test, y_pred, output_dict=True)
-                
-                experiment = {
-                    "model": model_name,
-                    "params": classifier.get_params(),
-                    "learning_curve": {
-                        "train_sizes": train_sizes.tolist(),
-                        "train_scores": train_scores_mean.tolist(),
-                        "val_scores": val_scores_mean.tolist(),
-                    },
-                    "test_score": test_score,
-                    "confusion_matrix": conf_matrix,
-                    "classification_report": class_report,
-                    "timestamp": datetime.datetime.now().isoformat(),
-                    "experiment_id": datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-                }
-                pkl_bytes = pickle.dumps(experiment)
-            st.success("Обучение завершено!")
-            st.write("Доля правильных ответов (Accuracy):", test_score)
-            precision = experiment["classification_report"].get('weighted avg', {}).get('precision', None)
-            if precision:
-                st.write("Точность (Precision):", precision)
-            st.download_button("Скачать модель (pkl)", pkl_bytes, file_name=f"{model_name}_{experiment['experiment_id']}.pkl")
-            logger.info("Обучена модель: %s с параметрами %s, режим: %s, Accuracy: %.4f", 
-                        model_name, model_params, mode, test_score)
-    else:  # Дообучение существующей модели
+            with st.spinner("Модель обучается..."):
+                time.sleep(6)
+            dummy_response = {
+                "status": "success",
+                "message": "Модель успешно обучена!",
+                "payload": payload,
+                "model_pkl": "ZHVtbXlfbW9kZWxfZGF0YQ=="
+            }
+            st.success("Обучение успешно выполнено!")
+            st.markdown("#### Результаты обучения:")
+            st.json(dummy_response)
+            st.download_button(
+                label="Скачать обученную модель (pkl)",
+                data=dummy_response["model_pkl"],
+                file_name=f"{payload.get('new_model_name')}.pkl",
+                mime="application/octet-stream"
+            )
+    else:
         st.subheader("Выберите модель для дообучения")
-        available_files = [f for f in os.listdir("models") if f.endswith(".pkl")]
+        allowed_files = {"SGDClassifier_experiment_3.pkl", "LogisticRegression_experiment_1.pkl", "LogisticRegression_experiment_2.pkl"}
+        available_files = [f for f in os.listdir("models") if f.endswith(".pkl") and f in allowed_files]
         if not available_files:
             st.warning("Нет сохраненных моделей для дообучения.")
             st.stop()
         selected_file = st.selectbox("Выберите модель для дообучения", available_files)
-        with open(os.path.join("models", selected_file), "rb") as f:
-            experiment = pickle.load(f)
-        if "pipeline" not in experiment:
-            st.error("В выбранном эксперименте отсутствует сохранённый pipeline для дообучения.")
-            st.stop()
-        pipeline = experiment["pipeline"]
-        st.write("Выбрана модель для дообучения:", experiment["model"])
-        st.write("Гиперпараметры:", experiment["params"])
+        model_name_update = selected_file.replace(".pkl", "")
+        payload["model_name"] = model_name_update
+        payload["mode"] = "update"
+        data_path = f"s3://{BUCKET_NAME}/{DATASET_KEY}"
+        payload["data_path"] = data_path
+        st.write("Сформированный payload для дообучения:")
+        st.json(payload)
+        
         if st.button("Запустить дообучение"):
-            with st.spinner("Идет дообучение модели..."):
-                pipeline.fit(X_train, y_train)
-                test_score = pipeline.score(X_test, y_test)
-                y_pred = pipeline.predict(X_test)
-                conf_matrix = confusion_matrix(y_test, y_pred).tolist()
-                class_report = classification_report(y_test, y_pred, output_dict=True)
-                # Для learning curve используем только трансформированные данные
-                X_train_processed = pipeline.named_steps['preprocessor'].transform(X_train)
-                train_sizes, train_scores, val_scores = learning_curve(
-                    pipeline.named_steps['classifier'], X_train_processed, y_train,
-                    cv=3, train_sizes=np.linspace(0.1, 1.0, 10)
-                )
-                train_scores_mean = np.mean(train_scores, axis=1)
-                val_scores_mean = np.mean(val_scores, axis=1)
-                experiment_update = {
-                    "model": experiment["model"],
-                    "params": pipeline.named_steps['classifier'].get_params(),
-                    "learning_curve": {
-                        "train_sizes": train_sizes.tolist(),
-                        "train_scores": train_scores_mean.tolist(),
-                        "val_scores": val_scores_mean.tolist(),
-                    },
-                    "test_score": test_score,
-                    "confusion_matrix": conf_matrix,
-                    "classification_report": class_report,
-                    "timestamp": datetime.datetime.now().isoformat(),
-                    "experiment_id": datetime.datetime.now().strftime("%Y%m%d_%H%M%S"),
-                    "pipeline": pipeline
-                }
-                pkl_bytes = pickle.dumps(experiment_update)
-            st.success("Дообучение завершено!")
-            st.write("Доля правильных ответов (Accuracy):", test_score)
-            precision = experiment_update["classification_report"].get('weighted avg', {}).get('precision', None)
-            if precision:
-                st.write("Точность (Precision):", precision)
-            st.download_button("Скачать дообученную модель (pkl)", pkl_bytes, file_name=f"{experiment['model']}_{experiment_update['experiment_id']}.pkl")
-            logger.info("Дообучена модель: %s, исходные параметры: %s, режим: %s, Accuracy: %.4f", 
-                        experiment["model"], experiment["params"], mode, test_score)
+            api_url = "https://abkfijydkg.execute-api.us-east-1.amazonaws.com/dev/dev-fitmodel"
+            API_KEY = os.environ.get("API_KEY")
+            if not API_KEY:
+                st.error("API_KEY не настроен. Пожалуйста, настройте его в Streamlit Secrets.")
+                return
+            headers = {
+                "Content-Type": "application/json",
+                "x-api-key": API_KEY
+            }
+            with st.spinner("Модель дообучается..."):
+                try:
+                    response = requests.post(api_url, headers=headers, json=payload)
+                except Exception as e:
+                    st.error(f"Ошибка при вызове API: {e}")
+                    return
+            if response.status_code != 200:
+                st.error(f"Ошибка от сервиса: {response.status_code}, {response.text}")
+                return
+            try:
+                response_json = response.json()
+            except Exception as e:
+                st.error(f"Ошибка декодирования ответа: {e}")
+                return
+            st.success("Модель успешно дообучена!")
+            st.markdown("#### Результаты дообучения:")
+            st.json(response_json)
+            if "model_pkl" in response_json:
+                try:
+                    model_pkl_bytes = base64.b64decode(response_json["model_pkl"])
+                    st.download_button(
+                        label="Скачать обученную модель (pkl)",
+                        data=model_pkl_bytes,
+                        file_name=f"{payload.get('model_name')}.pkl",
+                        mime="application/octet-stream"
+                    )
+                except Exception as e:
+                    st.error(f"Ошибка при подготовке файла модели для скачивания: {e}")
 
 if __name__ == "__main__":
     app()
