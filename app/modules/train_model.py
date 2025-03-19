@@ -11,11 +11,11 @@ import requests
 import base64
 
 BUCKET_NAME = "dmyachin-new-models"
-DATASET_KEY = "data/small_df.csv"  # Файл small_df.csv в S3 содержит столбец target
+DATASET_KEY = "data/small_df.csv"
 
 def load_dataset_from_s3(bucket_name, key):
-    aws_access_key_id = os.environ.get("AWS_ACCESS_KEY_ID")
-    aws_secret_access_key = os.environ.get("AWS_SECRET_ACCESS_KEY")
+    aws_access_key_id = st.secrets["general"]["AWS_ACCESS_KEY_ID"]
+    aws_secret_access_key = st.secrets["general"]["AWS_SECRET_ACCESS_KEY"]
     if not aws_access_key_id or not aws_secret_access_key:
         st.error("AWS ключи не настроены. Пожалуйста, настройте их в Streamlit Secrets.")
         return None
@@ -38,8 +38,8 @@ def load_dataset_from_s3(bucket_name, key):
 def upload_dataset_to_s3_client(df, bucket_name, key):
     csv_buffer = io.StringIO()
     df.to_csv(csv_buffer, index=False)
-    aws_access_key_id = os.environ.get("AWS_ACCESS_KEY_ID")
-    aws_secret_access_key = os.environ.get("AWS_SECRET_ACCESS_KEY")
+    aws_access_key_id = st.secrets["general"]["AWS_ACCESS_KEY_ID"]
+    aws_secret_access_key = st.secrets["general"]["AWS_SECRET_ACCESS_KEY"]
     if not aws_access_key_id or not aws_secret_access_key:
         st.error("AWS ключи не настроены. Пожалуйста, настройте их в Streamlit Secrets.")
         return None
@@ -159,7 +159,7 @@ def app():
         
         if st.button("Запустить дообучение"):
             api_url = "https://abkfijydkg.execute-api.us-east-1.amazonaws.com/dev/dev-fitmodel"
-            API_KEY = os.environ.get("API_KEY")
+            API_KEY = st.secrets["general"]["API_KEY"]
             if not API_KEY:
                 st.error("API_KEY не настроен. Пожалуйста, настройте его в Streamlit Secrets.")
                 return
