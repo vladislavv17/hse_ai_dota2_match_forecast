@@ -29,9 +29,9 @@ def lambda_handler(event, _context):
         }
 
     # Извлекаем необходимые параметры
-    bucket = body.get('bucket')
-    directory = body.get('directory')
-    file_name = body.get('file_name')
+    bucket = 'dmyachin-new-models'
+    directory = 'models'
+    file_name = body.get('model_name')
 
     if not (bucket and directory and file_name):
         return {
