@@ -7,7 +7,7 @@ s3_client = boto3.client('s3')
 dynamodb = boto3.resource('dynamodb')
 
 # Имя таблицы DynamoDB, которая служит key-value хранилищем
-TABLE_NAME = 'MyKeyValueTable'
+TABLE_NAME = 'Models'
 table = dynamodb.Table(TABLE_NAME)
 
 
