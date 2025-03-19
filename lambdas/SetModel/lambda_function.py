@@ -1,5 +1,4 @@
 import json
-
 import boto3
 from botocore.exceptions import ClientError
 
@@ -14,12 +13,12 @@ table = dynamodb.Table(TABLE_NAME)
 
 def lambda_handler(event, _context):
     """
-    Lambda for set main model for predict
+    Lambda для установки основной модели для предсказания.
     """
     # Ожидаем, что вызов происходит через API Gateway и данные передаются в теле запроса
     try:
         body = event.get('body')
-        # Если тело запроса в виде строки, парсим его как JSON
+        # Если тело запроса представлено строкой, парсим его как JSON
         if isinstance(body, str):
             body = json.loads(body)
     except Exception:  # pylint: disable=broad-exception-caught
@@ -28,30 +27,30 @@ def lambda_handler(event, _context):
             'body': json.dumps('Неверный формат тела запроса')
         }
 
-    # Извлекаем необходимые параметры
+    # Заданные параметры: имя бакета и директория, а имя файла (модели) передается в теле запроса
     bucket = 'dmyachin-new-models'
     directory = 'models'
     file_name = body.get('model_name')
 
-    if not (bucket and directory and file_name):
+    if not file_name:
         return {
             'statusCode': 400,
-            'body': json.dumps('Отсутствуют необходимые параметры: bucket, directory, file_name')
+            'body': json.dumps('Отсутствует необходимый параметр: model_name')
         }
 
     # Формируем ключ S3 (путь к файлу)
     s3_key = f"{directory}/{file_name}"
 
-    # Проверяем наличие файла в S3
+    # Проверяем наличие файла в S3 с использованием list_objects_v2
     try:
-        s3_client.head_object(Bucket=bucket, Key=s3_key)
-    except ClientError as e:
-        error_code = e.response['Error']['Code']
-        if error_code == '404':
+        response = s3_client.list_objects_v2(Bucket=bucket, Prefix=s3_key, MaxKeys=1)
+        # Если в ответе отсутствует ключ 'Contents', файл не найден
+        if 'Contents' not in response:
             return {
                 'statusCode': 404,
                 'body': json.dumps('Файл не найден')
             }
+    except ClientError as e:  # pylint: disable=broad-exception-caught
         return {
             'statusCode': 500,
             'body': json.dumps(f'Ошибка при проверке файла: {e}')
@@ -64,7 +63,7 @@ def lambda_handler(event, _context):
     try:
         table.put_item(
             Item={
-                'id': 'unique_key',      # Замените 'unique_key' на значение, соответствующее логике вашего приложения
+                'id': 'unique_key',  # Замените 'unique_key' на значение, соответствующее логике вашего приложения
                 'value': dynamodb_value
             }
         )
