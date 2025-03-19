@@ -61,11 +61,10 @@ def lambda_handler(event, _context):
 
     # Записываем элемент в DynamoDB. В данном случае используется ключ 'id' с уникальным значением.
     try:
-        table.put_item(
-            Item={
-                'id': 'unique_key',  # Замените 'unique_key' на значение, соответствующее логике вашего приложения
-                'value': dynamodb_value
-            }
+        table.update_item(
+            Key={'main_model': 'real_model'},
+            UpdateExpression="SET setted_model = :val",
+            ExpressionAttributeValues={":val": dynamodb_value}
         )
     except Exception as e:  # pylint: disable=broad-exception-caught
         return {
