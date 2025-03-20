@@ -36,7 +36,7 @@ def upload_dataset_to_s3_client(df, bucket_name, key):
     s3_client = boto3.client(
         "s3",
         region_name="us-east-1",
-        aws_access_key_id = st.secrets["general"]["AWS_ACCESS_KEY_ID"]
+        aws_access_key_id = st.secrets["general"]["AWS_ACCESS_KEY_ID"],
         aws_secret_access_key = st.secrets["general"]["AWS_SECRET_ACCESS_KEY"]
     )
     try:
