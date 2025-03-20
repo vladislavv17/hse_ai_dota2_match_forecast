@@ -40,6 +40,16 @@ def app():
         st.warning("Список моделей пуст.")
         return
 
+    # Фильтрация моделей: оставляем только нужные
+    allowed_models = [
+        "DecisionTreeClassifier_experiment_5.pkl",
+        "DecisionTreeClassifier_experiment_6.pkl",
+        "LogisticRegression_experiment_1.pkl",
+        "LogisticRegression_experiment_2.pkl",
+        "SGDClassifier_experiment_3.pkl",
+        "SGDClassifier_experiment_4.pkl"
+    ]
+
     # Строим выпадающий список. Для отображения используем имя файла из s3_key
     options = {}
     for model in models_info:
@@ -48,7 +58,13 @@ def app():
             display_name = s3_key.split("/")[-1]
         else:
             display_name = model.get("key", "Unknown")
+        if display_name not in allowed_models:
+            continue
         options[display_name] = model
+
+    if not options:
+        st.warning("Нет доступных моделей для отображения.")
+        return
 
     selected_display = st.selectbox("Выберите эксперимент", list(options.keys()))
     selected_model = options[selected_display]
