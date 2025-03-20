@@ -9,10 +9,6 @@ from botocore.exceptions import ClientError
 import io
 from utils.logger import logger
 
-# Для локальной разработки можно использовать dotenv
-# from dotenv import load_dotenv
-# load_dotenv()
-
 def list_models_in_s3(bucket_name, prefix="models/"):
     aws_access_key_id = st.secrets["general"]["AWS_ACCESS_KEY_ID"]
     aws_secret_access_key = st.secrets["general"]["AWS_SECRET_ACCESS_KEY"]
@@ -82,9 +78,12 @@ def app():
     
     # Оставляем только нужные модели
     allowed_models = {
-        "LogisticRegression_experiment_1.pkl",
-        "LogisticRegression_experiment_2.pkl",
-        "SGDClassifier_experiment_3.pkl"
+        "LogisticRegression_experiment_1_inf.pkl",
+        "LogisticRegression_experiment_2_inf.pkl",
+        "SGDClassifier_experiment_3_inf.pkl",
+        "SGDClassifier_experiment_4_inf.pkl",
+        "DecisionTreeClassifier_experiment_5_inf.pkl",
+        "DecisionTreeClassifier_experiment_6_inf.pkl"
     }
     filtered_options = {k: v for k, v in options.items() if k in allowed_models}
     if not filtered_options:
