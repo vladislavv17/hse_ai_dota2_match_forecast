@@ -17,8 +17,8 @@ def load_dataset_from_s3(bucket_name, key):
     s3_client = boto3.client(
         "s3",
         region_name="us-east-1",
-        aws_access_key_id=aws_access_key_id,
-        aws_secret_access_key=aws_secret_access_key
+        aws_access_key_id = st.secrets["general"]["AWS_ACCESS_KEY_ID"]
+        aws_secret_access_key = st.secrets["general"]["AWS_SECRET_ACCESS_KEY"]
     )
     try:
         response = s3_client.get_object(Bucket=bucket_name, Key=key)
@@ -36,8 +36,8 @@ def upload_dataset_to_s3_client(df, bucket_name, key):
     s3_client = boto3.client(
         "s3",
         region_name="us-east-1",
-        aws_access_key_id=aws_access_key_id,
-        aws_secret_access_key=aws_secret_access_key
+        aws_access_key_id = st.secrets["general"]["AWS_ACCESS_KEY_ID"]
+        aws_secret_access_key = st.secrets["general"]["AWS_SECRET_ACCESS_KEY"]
     )
     try:
         s3_client.put_object(Bucket=bucket_name, Key=key, Body=csv_buffer.getvalue())
