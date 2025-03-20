@@ -66,8 +66,11 @@ def app():
     if 'Unnamed: 0' in df.columns:
         df.drop('Unnamed: 0', axis=1, inplace=True)
     if "target" not in df.columns:
-        st.error("В датасете отсутствует столбец 'target'.")
-        return
+        if "radiant_win" in df.columns:
+            df["target"] = df["radiant_win"]
+        else:
+            st.error("В датасете отсутствует столбец 'target'.")
+            return
 
     # Выбор режима обучения
     mode = st.radio("Выберите режим обучения", ["Обучение с нуля", "Дообучение существующей модели"])
