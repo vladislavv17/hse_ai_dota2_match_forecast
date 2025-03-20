@@ -16,7 +16,7 @@ def app():
     st.title("Сравнение экспериментов")
 
     # Получаем API ключ из переменных окружения
-    API_KEY = os.environ.get("API_KEY")
+    API_KEY = st.secrets["general"]["API_KEY"]
     if not API_KEY:
         st.error("API_KEY не настроен. Пожалуйста, настройте его в Streamlit Secrets.")
         return
@@ -59,8 +59,8 @@ def app():
         return
 
     # Получаем AWS ключи из переменных окружения
-    aws_access_key_id = os.environ.get("AWS_ACCESS_KEY_ID")
-    aws_secret_access_key = os.environ.get("AWS_SECRET_ACCESS_KEY")
+    aws_access_key_id = st.secrets["general"]["AWS_ACCESS_KEY_ID"]
+    aws_secret_access_key = st.secrets["general"]["AWS_SECRET_ACCESS_KEY"]
     if not aws_access_key_id or not aws_secret_access_key:
         st.error("AWS ключи не настроены. Пожалуйста, настройте их в Streamlit Secrets.")
         return
