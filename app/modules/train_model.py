@@ -1,5 +1,5 @@
-import os
 import streamlit as st
+import os
 import datetime
 import time
 import pandas as pd
@@ -11,14 +11,9 @@ import requests
 import base64
 
 BUCKET_NAME = "dmyachin-new-models"
-DATASET_KEY = "data/small_df.csv"
+DATASET_KEY = "data/small_df.csv"  # Файл small_df.csv в S3 содержит столбец target
 
 def load_dataset_from_s3(bucket_name, key):
-    aws_access_key_id = st.secrets["general"]["AWS_ACCESS_KEY_ID"]
-    aws_secret_access_key = st.secrets["general"]["AWS_SECRET_ACCESS_KEY"]
-    if not aws_access_key_id or not aws_secret_access_key:
-        st.error("AWS ключи не настроены. Пожалуйста, настройте их в Streamlit Secrets.")
-        return None
     s3_client = boto3.client(
         "s3",
         region_name="us-east-1",
@@ -38,11 +33,6 @@ def load_dataset_from_s3(bucket_name, key):
 def upload_dataset_to_s3_client(df, bucket_name, key):
     csv_buffer = io.StringIO()
     df.to_csv(csv_buffer, index=False)
-    aws_access_key_id = st.secrets["general"]["AWS_ACCESS_KEY_ID"]
-    aws_secret_access_key = st.secrets["general"]["AWS_SECRET_ACCESS_KEY"]
-    if not aws_access_key_id or not aws_secret_access_key:
-        st.error("AWS ключи не настроены. Пожалуйста, настройте их в Streamlit Secrets.")
-        return None
     s3_client = boto3.client(
         "s3",
         region_name="us-east-1",
@@ -109,8 +99,10 @@ def app():
         payload["model_params"] = model_params
         payload["model_type"] = classifier_choice
         
+        # Имитируем этап предобработки – здесь можно оставить логику как раньше
         X = df.drop(columns=['target'])
         y = df['target']
+        # Для имитации оставляем исходный датасет (или можно применить реальную предобработку)
         df_preprocessed = df.copy()
         data_key_preprocessed = f"data/{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}_preprocessed.csv"
         data_url = upload_dataset_to_s3_client(df_preprocessed, BUCKET_NAME, data_key_preprocessed)
@@ -123,14 +115,15 @@ def app():
         st.write("Сформированный payload для обучения:")
         st.json(payload)
         
+        # Имитация обучения – вместо реального запроса делаем задержку
         if st.button("Запустить обучение"):
             with st.spinner("Модель обучается..."):
-                time.sleep(6)
+                time.sleep(10)  # Имитируем процесс обучения 10 секунд
             dummy_response = {
                 "status": "success",
                 "message": "Модель успешно обучена!",
                 "payload": payload,
-                "model_pkl": "ZHVtbXlfbW9kZWxfZGF0YQ=="
+                "model_pkl": "ZHVtbXlfbW9kZWxfZGF0YQ=="  # dummy base64 (это строка 'dummy_model_data' в base64)
             }
             st.success("Обучение успешно выполнено!")
             st.markdown("#### Результаты обучения:")
@@ -142,8 +135,9 @@ def app():
                 mime="application/octet-stream"
             )
     else:
+        # Режим "Дообучение существующей модели" – остаётся прежняя логика
         st.subheader("Выберите модель для дообучения")
-        allowed_files = {"SGDClassifier_experiment_3.pkl", "LogisticRegression_experiment_1.pkl", "LogisticRegression_experiment_2.pkl"}
+        allowed_files = {"SGDClassifier_experiment_4.pkl", "LogisticRegression_experiment_1.pkl", "LogisticRegression_experiment_2.pkl"}
         available_files = [f for f in os.listdir("models") if f.endswith(".pkl") and f in allowed_files]
         if not available_files:
             st.warning("Нет сохраненных моделей для дообучения.")
@@ -159,13 +153,9 @@ def app():
         
         if st.button("Запустить дообучение"):
             api_url = "https://abkfijydkg.execute-api.us-east-1.amazonaws.com/dev/dev-fitmodel"
-            API_KEY = st.secrets["general"]["API_KEY"]
-            if not API_KEY:
-                st.error("API_KEY не настроен. Пожалуйста, настройте его в Streamlit Secrets.")
-                return
             headers = {
                 "Content-Type": "application/json",
-                "x-api-key": API_KEY
+                "x-api-key": st.secrets["general"]["API_KEY"]
             }
             with st.spinner("Модель дообучается..."):
                 try:
