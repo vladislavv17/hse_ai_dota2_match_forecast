@@ -4,3 +4,4 @@ boto3==1.37.15
 plotly==6.0.0
 pandas==2.2.3
 numpy==2.2.2
+scikit-learn==1.2.2
