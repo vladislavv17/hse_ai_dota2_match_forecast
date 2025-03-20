@@ -8,10 +8,6 @@ import boto3
 from botocore.exceptions import ClientError
 from utils.logger import logger
 
-# Для локальной разработки можно использовать dotenv
-# from dotenv import load_dotenv
-# load_dotenv()
-
 def app():
     st.title("Сравнение экспериментов")
 
@@ -43,12 +39,28 @@ def app():
         st.warning("Список экспериментов пуст.")
         return
 
+    # Фильтрация экспериментов: оставляем только нужные
+    allowed_models = [
+        "DecisionTreeClassifier_experiment_5.pkl",
+        "DecisionTreeClassifier_experiment_6.pkl",
+        "LogisticRegression_experiment_1.pkl",
+        "LogisticRegression_experiment_2.pkl",
+        "SGDClassifier_experiment_3.pkl",
+        "SGDClassifier_experiment_4.pkl"
+    ]
+
     # Строим словарь для multiselect: ключ – отображаемое имя (последняя часть s3_key), значение – объект эксперимента
     options = {}
     for exp in experiments_list:
         s3_key = exp.get("s3_key")
         display_name = s3_key.split("/")[-1] if s3_key else exp.get("key", "Unknown")
+        if display_name not in allowed_models:
+            continue
         options[display_name] = exp
+
+    if not options:
+        st.warning("Нет доступных экспериментов для сравнения.")
+        return
 
     selected_experiments = st.multiselect("Выберите эксперименты для сравнения", list(options.keys()), default=list(options.keys()))
     logger.info("Пользователь выбрал эксперименты для сравнения: %s", selected_experiments)
